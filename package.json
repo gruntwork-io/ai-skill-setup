@@ -1,0 +1,49 @@
+{
+  "name": "@gruntwork-ai/skills-setup",
+  "version": "0.1.1",
+  "description": "Bootstrap an infrastructure-live repo with the Gruntwork MCP server config and Claude Code skills for Terragrunt and the Gruntwork IaC Library.",
+  "type": "module",
+  "bin": {
+    "gruntwork-ai-setup": "dist/init.js"
+  },
+  "files": [
+    "dist",
+    "skills"
+  ],
+  "scripts": {
+    "build": "tsc && chmod +x dist/init.js",
+    "clean": "rm -rf dist",
+    "init": "bun src/init.ts",
+    "prepublishOnly": "npm run clean && npm run build"
+  },
+  "engines": {
+    "node": ">=20.11"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.0",
+    "@types/node": "^20.11.0"
+  },
+  "keywords": [
+    "gruntwork",
+    "terragrunt",
+    "mcp",
+    "claude",
+    "claude-code",
+    "iac",
+    "terraform",
+    "opentofu"
+  ],
+  "license": "MIT",
+  "author": "Gruntwork <support@gruntwork.io>",
+  "homepage": "https://github.com/gruntwork-io/ai-skill-setup#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/gruntwork-io/ai-skill-setup.git"
+  },
+  "bugs": {
+    "url": "https://github.com/gruntwork-io/ai-skill-setup/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
