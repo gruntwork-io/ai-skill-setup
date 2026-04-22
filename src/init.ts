@@ -19,8 +19,12 @@
  *      deep — Gruntwork source URLs, account names, and aws_region values.
  *      All local I/O; no network calls.
  *   2. Writes CLAUDE.md with detected context (or placeholders if --no-scan)
- *   3. Writes .claude/settings.json with MCP server config
- *   4. Copies skill files to .claude/skills/
+ *   3. Merges MCP server config into .claude/settings.local.json (preserves
+ *      any existing keys; refuses to overwrite if the file isn't valid JSON).
+ *      Personal/per-dev scope — the access token lives here.
+ *   4. Ensures .gitignore has `.claude/settings.local.json` so the token
+ *      doesn't accidentally get committed.
+ *   5. Copies skill files to .claude/skills/
  */
 import { readdir, readFile, writeFile, mkdir } from "node:fs/promises"
 import { dirname, join, resolve } from "node:path"
@@ -48,6 +52,39 @@ async function readFileIfExists(path: string): Promise<string | null> {
 async function writeFileEnsureDir(path: string, content: string): Promise<void> {
   await mkdir(dirname(path), { recursive: true })
   await writeFile(path, content, "utf-8")
+}
+
+// Read + parse JSON. Returns null on missing; THROWS on invalid JSON so we never
+// silently clobber a file the user was editing.
+async function readJsonIfExists<T = Record<string, unknown>>(path: string): Promise<T | null> {
+  const content = await readFileIfExists(path)
+  if (content === null) return null
+  try {
+    return JSON.parse(content) as T
+  } catch (e) {
+    throw new Error(
+      `Existing ${path} is not valid JSON (${e instanceof Error ? e.message : String(e)}). ` +
+      `Refusing to overwrite — fix or remove the file and re-run.`,
+    )
+  }
+}
+
+// Ensure `entry` appears on its own line in `<repoPath>/.gitignore`.
+// Creates the file if missing. Returns what action was taken so we can log it.
+async function ensureGitignoreEntry(
+  repoPath: string, entry: string,
+): Promise<"created" | "added" | "already-present"> {
+  const gitignorePath = join(repoPath, ".gitignore")
+  const existing = await readFileIfExists(gitignorePath)
+  if (existing === null) {
+    await writeFile(gitignorePath, `${entry}\n`, "utf-8")
+    return "created"
+  }
+  const hasLine = existing.split("\n").some(l => l.trim() === entry)
+  if (hasLine) return "already-present"
+  const separator = existing.endsWith("\n") ? "" : "\n"
+  await writeFile(gitignorePath, `${existing}${separator}${entry}\n`, "utf-8")
+  return "added"
 }
 
 async function findFiles(dir: string, pattern: RegExp, maxDepth = 4): Promise<string[]> {
@@ -134,6 +171,11 @@ const regionsLabel = detected.regions.length > 0
   ? detected.regions.join(", ")
   : (skipScan ? "(fill in your regions — scan skipped)" : "not detected")
 
+const repoStructureLines = [
+  "- `{account}/{region}/{category}/{module}/terragrunt.hcl` -- per-unit config",
+  "- `common.hcl`, `account.hcl`, `region.hcl` -- hierarchical config",
+].join("\n")
+
 const claudeMd = `# Infrastructure Repository
 
 ## Stack
@@ -143,9 +185,7 @@ const claudeMd = `# Infrastructure Repository
 - **Regions**: ${regionsLabel}
 
 ## Repo Structure
-- \`_envcommon/\` -- shared module configs (base templates)
-- \`{account}/{region}/{category}/{module}/terragrunt.hcl\` -- env overrides
-- \`common.hcl\`, \`account.hcl\`, \`region.hcl\` -- hierarchical config
+${repoStructureLines}
 
 ## Conventions
 - Sources: \`git::git@github.com:gruntwork-io/{repo}.git//modules/{path}?ref={version}\`
@@ -156,40 +196,80 @@ Connected to the Gruntwork MCP server for module discovery, guidance, and semant
 Create access tokens at: https://app.gruntwork.io/settings/profile#mcp-access-tokens
 
 ## Available Skills
-- \`/gruntwork-find\` -- discover modules for a requirement
-- \`/gruntwork-deploy\` -- scaffold Terragrunt configs for a module
-- \`/gruntwork-patcher\` -- audit module versions, apply patches and upgrades
-- \`/gruntwork-debug\` -- troubleshoot Terragrunt, OpenTofu/Terraform errors
-- \`/gruntwork-terragrunt\` -- explain Terragrunt concepts, blocks, functions, repo structure, migrations
+- \`/gruntwork:find\` -- discover modules for a requirement
+- \`/gruntwork:deploy\` -- scaffold Terragrunt configs for a module
+- \`/gruntwork:patcher\` -- audit module versions, apply patches and upgrades
+- \`/gruntwork:debug\` -- troubleshoot Terragrunt, OpenTofu/Terraform errors
+- \`/gruntwork:terragrunt\` -- explain Terragrunt concepts, blocks, functions, repo structure, migrations
 `
 
 await writeFileEnsureDir(join(repoPath, "CLAUDE.md"), claudeMd)
 console.log("  Wrote CLAUDE.md")
 
-// --- Write .claude/settings.json ---
+// --- Merge MCP config into .claude/settings.local.json ---
+//
+// We write to settings.local.json (not settings.json) because the access token
+// is per-developer. If the user already has local settings (other MCP servers,
+// hooks, permissions), we preserve every top-level key and only replace the
+// `mcpServers.gruntwork` entry. If the file is present but unparseable we
+// refuse to overwrite — better to fail loudly than silently clobber.
 
 const claudeDir = join(repoPath, ".claude")
 const skillsDir = join(claudeDir, "skills")
-await writeFileEnsureDir(join(claudeDir, "settings.json"), JSON.stringify({
-  mcpServers: {
-    gruntwork: {
-      url: MCP_URL,
-      headers: {
-        Authorization: apiKey ? `Bearer ${apiKey}` : "Bearer <your-access-token-from-app.gruntwork.io/settings/profile#mcp-access-tokens>",
-      },
-    },
+const settingsPath = join(claudeDir, "settings.local.json")
+
+interface ClaudeSettings {
+  mcpServers?: Record<string, unknown>
+  [key: string]: unknown
+}
+const existingSettings = (await readJsonIfExists<ClaudeSettings>(settingsPath)) ?? {}
+const existingMcp = (existingSettings.mcpServers ?? {}) as Record<string, unknown>
+
+const gruntworkEntry = {
+  url: MCP_URL,
+  headers: {
+    Authorization: apiKey ? `Bearer ${apiKey}` : "Bearer <your-access-token-from-app.gruntwork.io/settings/profile#mcp-access-tokens>",
   },
-}, null, 2) + "\n")
-console.log("  Wrote .claude/settings.json")
+}
+
+const mergedSettings: ClaudeSettings = {
+  ...existingSettings,
+  mcpServers: { ...existingMcp, gruntwork: gruntworkEntry },
+}
+
+await writeFileEnsureDir(settingsPath, JSON.stringify(mergedSettings, null, 2) + "\n")
+const existingKeys = Object.keys(existingSettings).filter(k => k !== "mcpServers" || Object.keys(existingMcp).length > 0)
+if (existingKeys.length > 0) {
+  console.log(`  Merged MCP config into .claude/settings.local.json (preserved ${existingKeys.length} existing key(s))`)
+} else {
+  console.log("  Wrote .claude/settings.local.json")
+}
+
+// --- Ensure .gitignore keeps the token out of version control ---
+
+const gitignoreAction = await ensureGitignoreEntry(repoPath, ".claude/settings.local.json")
+if (gitignoreAction === "created") {
+  console.log("  Created .gitignore with .claude/settings.local.json")
+} else if (gitignoreAction === "added") {
+  console.log("  Added .claude/settings.local.json to .gitignore")
+}
+// Silent if already present — don't clutter the output.
 
 // --- Copy skill files ---
 
-// Skills ship as sibling to the compiled entrypoint:
-//   dist/init.js  +  skills/*.md     (published layout)
-//   src/init.ts   +  skills/*.md     (in-repo layout)
-// In both cases, `../skills` from the script's dir resolves correctly.
+// Skills ship under a `gruntwork/` namespace dir per Claude Code convention —
+// each file becomes a `gruntwork:<name>` skill. Both published and in-repo
+// layouts have the skills dir as a sibling of the entrypoint script.
+//   dist/init.js  +  skills/gruntwork/*.md     (published)
+//   src/init.ts   +  skills/gruntwork/*.md     (in-repo)
 const skillsSrcDir = join(import.meta.dirname, "..", "skills")
-const skillFiles = ["gruntwork-find.md", "gruntwork-deploy.md", "gruntwork-patcher.md", "gruntwork-debug.md", "gruntwork-terragrunt.md"]
+const skillFiles = [
+  "gruntwork/find.md",
+  "gruntwork/deploy.md",
+  "gruntwork/patcher.md",
+  "gruntwork/debug.md",
+  "gruntwork/terragrunt.md",
+]
 
 for (const file of skillFiles) {
   const content = await readFileIfExists(join(skillsSrcDir, file))
@@ -205,7 +285,7 @@ console.log("")
 if (!apiKey) {
   console.log("Next steps:")
   console.log("  1. Create an access token at https://app.gruntwork.io/settings/profile#mcp-access-tokens")
-  console.log("  2. Update .claude/settings.json with your token")
+  console.log("  2. Update .claude/settings.local.json with your token")
   console.log("  3. Restart Claude Code")
 } else {
   console.log("Done! Restart Claude Code to pick up the Gruntwork MCP server.")

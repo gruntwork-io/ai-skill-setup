@@ -4,8 +4,8 @@ One-command bootstrap for a [Claude Code](https://claude.com/claude-code) worksp
 
 Run it inside an infrastructure-live repo and it wires up:
 
-- **`.claude/settings.json`** — connects Claude Code to the hosted Gruntwork MCP server
-- **`.claude/skills/`** — a set of Claude Code skills (`/gruntwork-find`, `/gruntwork-deploy`, `/gruntwork-debug`, `/gruntwork-patcher`, `/gruntwork-terragrunt`)
+- **`.claude/settings.local.json`** — merges the Gruntwork MCP server config (with your access token) into your personal Claude Code settings. Existing keys are preserved; if the file isn't valid JSON, the tool refuses to overwrite. A matching `.gitignore` entry is added automatically so the token doesn't get committed.
+- **`.claude/skills/`** — a set of Claude Code skills (`/gruntwork:find`, `/gruntwork:deploy`, `/gruntwork:debug`, `/gruntwork:patcher`, `/gruntwork:terragrunt`)
 - **`CLAUDE.md`** — a detected-stack summary so Claude has context (modules in use, accounts, regions, Gruntwork version)
 
 ## Quick start
@@ -14,7 +14,7 @@ Run it inside an infrastructure-live repo and it wires up:
 npx @gruntwork-ai/skills-setup --repo . --key gw_mk_xxxxxxxxxxxxx
 ```
 
-Then restart Claude Code. The Gruntwork MCP tools and `/gruntwork-*` skills will be available.
+Then restart Claude Code. The Gruntwork MCP tools and `/gruntwork:*` skills will be available.
 
 Get an access token at [app.gruntwork.io/settings/profile#mcp-access-tokens](https://app.gruntwork.io/settings/profile#mcp-access-tokens). If you don't pass `--key`, the tool still scaffolds everything — it just leaves a placeholder for you to fill in.
 
@@ -49,11 +49,11 @@ Pass `--no-scan` to skip this entirely. Useful when:
 
 | Skill | Purpose |
 |-------|---------|
-| `/gruntwork-find` | Discover the right Gruntwork module for an infrastructure requirement |
-| `/gruntwork-deploy` | Scaffold Terragrunt configs for a specific Gruntwork module |
-| `/gruntwork-patcher` | Audit module versions, apply patches and upgrades |
-| `/gruntwork-debug` | Troubleshoot Terragrunt, OpenTofu/Terraform errors |
-| `/gruntwork-terragrunt` | Explain Terragrunt concepts, blocks, functions, repo structure, migrations |
+| `/gruntwork:find` | Discover the right Gruntwork module for an infrastructure requirement |
+| `/gruntwork:deploy` | Scaffold Terragrunt configs for a specific Gruntwork module |
+| `/gruntwork:patcher` | Audit module versions, apply patches and upgrades |
+| `/gruntwork:debug` | Troubleshoot Terragrunt, OpenTofu/Terraform errors |
+| `/gruntwork:terragrunt` | Explain Terragrunt concepts, blocks, functions, repo structure, migrations |
 
 Each skill is a Markdown file with frontmatter — open any of them in `.claude/skills/` to read or customize the prompt.
 

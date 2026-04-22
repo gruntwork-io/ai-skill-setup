@@ -1,5 +1,5 @@
 ---
-name: gruntwork-find
+name: gruntwork:find
 description: Find Gruntwork modules for an infrastructure requirement
 ---
 

@@ -1,5 +1,5 @@
 ---
-name: gruntwork-debug
+name: gruntwork:debug
 description: Troubleshoot Terragrunt, OpenTofu/Terraform errors
 ---
 

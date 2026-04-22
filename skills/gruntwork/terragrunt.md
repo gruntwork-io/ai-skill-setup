@@ -1,11 +1,11 @@
 ---
-name: gruntwork-terragrunt
+name: gruntwork:terragrunt
 description: Explain Terragrunt concepts, patterns, and syntax (blocks, functions, repo structure, migrations)
 ---
 
 # Terragrunt Guidance
 
-When the user asks about Terragrunt itself — how blocks work, what a function does, how to structure an infrastructure-live repo, how to migrate from a terralith, how `run-all` and stacks behave, how caching or filtering works — use this skill. This skill is NOT for wiring a specific Gruntwork module into a repo (use `/gruntwork-deploy` for that), and NOT for diagnosing a specific error message (use `/gruntwork-debug`).
+When the user asks about Terragrunt itself — how blocks work, what a function does, how to structure an infrastructure-live repo, how to migrate from a terralith, how `run-all` and stacks behave, how caching or filtering works — use this skill. This skill is NOT for wiring a specific Gruntwork module into a repo (use `/gruntwork:deploy` for that — it also has the canonical guidance on building reusable higher-order patterns with `terragrunt.stack.hcl`), and NOT for diagnosing a specific error message (use `/gruntwork:debug`).
 
 ## Steps
 

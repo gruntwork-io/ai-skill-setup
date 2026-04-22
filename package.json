@@ -1,6 +1,6 @@
 {
   "name": "@gruntwork-ai/skills-setup",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Bootstrap an infrastructure-live repo with the Gruntwork MCP server config and Claude Code skills for Terragrunt and the Gruntwork IaC Library.",
   "type": "module",
   "bin": {
