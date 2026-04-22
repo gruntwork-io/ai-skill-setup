@@ -1,5 +1,5 @@
 ---
-name: gruntwork-deploy
+name: gruntwork:deploy
 description: Scaffold Terragrunt configs for a Gruntwork module
 ---
 
@@ -9,7 +9,7 @@ When the user wants to deploy a Gruntwork module into their infrastructure-live 
 
 ## Steps
 
-1. Identify the target module. If the user says "I need an RDS database", first use `/gruntwork-find` to identify the right module (e.g., `terraform-aws-service-catalog/rds`).
+1. Identify the target module. If the user says "I need an RDS database", first use `/gruntwork:find` to identify the right module (e.g., `terraform-aws-service-catalog/rds`).
 
 2. Call `get_module_variables` with `required_only: true` to get the variables that MUST be set.
 

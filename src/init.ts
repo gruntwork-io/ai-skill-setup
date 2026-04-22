@@ -196,11 +196,11 @@ Connected to the Gruntwork MCP server for module discovery, guidance, and semant
 Create access tokens at: https://app.gruntwork.io/settings/profile#mcp-access-tokens
 
 ## Available Skills
-- \`/gruntwork-find\` -- discover modules for a requirement
-- \`/gruntwork-deploy\` -- scaffold Terragrunt configs for a module
-- \`/gruntwork-patcher\` -- audit module versions, apply patches and upgrades
-- \`/gruntwork-debug\` -- troubleshoot Terragrunt, OpenTofu/Terraform errors
-- \`/gruntwork-terragrunt\` -- explain Terragrunt concepts, blocks, functions, repo structure, migrations
+- \`/gruntwork:find\` -- discover modules for a requirement
+- \`/gruntwork:deploy\` -- scaffold Terragrunt configs for a module
+- \`/gruntwork:patcher\` -- audit module versions, apply patches and upgrades
+- \`/gruntwork:debug\` -- troubleshoot Terragrunt, OpenTofu/Terraform errors
+- \`/gruntwork:terragrunt\` -- explain Terragrunt concepts, blocks, functions, repo structure, migrations
 `
 
 await writeFileEnsureDir(join(repoPath, "CLAUDE.md"), claudeMd)
@@ -257,12 +257,19 @@ if (gitignoreAction === "created") {
 
 // --- Copy skill files ---
 
-// Skills ship as sibling to the compiled entrypoint:
-//   dist/init.js  +  skills/*.md     (published layout)
-//   src/init.ts   +  skills/*.md     (in-repo layout)
-// In both cases, `../skills` from the script's dir resolves correctly.
+// Skills ship under a `gruntwork/` namespace dir per Claude Code convention —
+// each file becomes a `gruntwork:<name>` skill. Both published and in-repo
+// layouts have the skills dir as a sibling of the entrypoint script.
+//   dist/init.js  +  skills/gruntwork/*.md     (published)
+//   src/init.ts   +  skills/gruntwork/*.md     (in-repo)
 const skillsSrcDir = join(import.meta.dirname, "..", "skills")
-const skillFiles = ["gruntwork-find.md", "gruntwork-deploy.md", "gruntwork-patcher.md", "gruntwork-debug.md", "gruntwork-terragrunt.md"]
+const skillFiles = [
+  "gruntwork/find.md",
+  "gruntwork/deploy.md",
+  "gruntwork/patcher.md",
+  "gruntwork/debug.md",
+  "gruntwork/terragrunt.md",
+]
 
 for (const file of skillFiles) {
   const content = await readFileIfExists(join(skillsSrcDir, file))

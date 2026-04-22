@@ -1,5 +1,5 @@
 ---
-name: gruntwork-patcher
+name: gruntwork:patcher
 description: Audit module versions and apply patches/upgrades
 ---
 
