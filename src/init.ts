@@ -215,8 +215,9 @@ const regionsLabel = detected.regions.length > 0
   ? detected.regions.join(", ")
   : (skipScan ? "(fill in your regions — scan skipped)" : "not detected")
 
-function renderContextMd(commandPrefix: string): string {
-  // commandPrefix: "gruntwork:" for Claude skills, "gruntwork-" for Codex prompts.
+type AgentKind = "claude" | "codex"
+function renderContextMd(kind: AgentKind): string {
+  // Claude: `/gruntwork:find`. Codex: `$gruntwork-find` (or `/skills gruntwork-find`).
   const skills = [
     ["find", "discover modules for a requirement"],
     ["deploy", "scaffold Terragrunt configs for a module"],
@@ -224,7 +225,11 @@ function renderContextMd(commandPrefix: string): string {
     ["debug", "troubleshoot Terragrunt, OpenTofu/Terraform errors"],
     ["terragrunt", "explain Terragrunt concepts, blocks, functions, repo structure, migrations"],
   ]
-  const skillsList = skills.map(([n, d]) => `- \`/${commandPrefix}${n}\` -- ${d}`).join("\n")
+  const skillsList = skills.map(([n, d]) =>
+    kind === "claude"
+      ? `- \`/gruntwork:${n}\` -- ${d}`
+      : `- \`$gruntwork-${n}\` -- ${d}`,
+  ).join("\n")
 
   return `# Infrastructure Repository
 
@@ -252,11 +257,11 @@ ${skillsList}
 }
 
 if (targets.includes("claude")) {
-  await writeFileEnsureDir(join(repoPath, "CLAUDE.md"), renderContextMd("gruntwork:"))
+  await writeFileEnsureDir(join(repoPath, "CLAUDE.md"), renderContextMd("claude"))
   console.log("  Wrote CLAUDE.md")
 }
 if (targets.includes("codex")) {
-  await writeFileEnsureDir(join(repoPath, "AGENTS.md"), renderContextMd("gruntwork-"))
+  await writeFileEnsureDir(join(repoPath, "AGENTS.md"), renderContextMd("codex"))
   console.log("  Wrote AGENTS.md")
 }
 
@@ -349,13 +354,10 @@ if (targets.includes("codex")) {
 const skillNames = ["find", "deploy", "patcher", "debug", "terragrunt"]
 const skillsSrcDir = join(import.meta.dirname, "..", "skills")
 
-// Strip `--- ... ---` frontmatter block from the top of a skill file.
-function stripFrontmatter(md: string): string {
-  if (!md.startsWith("---")) return md
-  const end = md.indexOf("\n---", 3)
-  if (end === -1) return md
-  const after = md.slice(end + 4)
-  return after.replace(/^\r?\n/, "")
+// Codex skill names can't contain `:` (they map to `$name` invocation), so
+// rewrite `name: gruntwork:find` → `name: gruntwork-find` in the frontmatter.
+function rewriteNameForCodex(md: string, codexName: string): string {
+  return md.replace(/^(name:\s*).+$/m, `$1${codexName}`)
 }
 
 for (const name of skillNames) {
@@ -369,11 +371,12 @@ for (const name of skillNames) {
     console.log(`  Wrote .claude/skills/gruntwork/${name}.md`)
   }
   if (targets.includes("codex")) {
-    // Codex slash-command name comes from the filename. No colon namespacing;
-    // use a `gruntwork-` prefix so they don't collide with other prompts.
-    const dst = join(repoPath, ".codex", "prompts", `gruntwork-${name}.md`)
-    await writeFileEnsureDir(dst, stripFrontmatter(content))
-    console.log(`  Wrote .codex/prompts/gruntwork-${name}.md`)
+    // Codex reads skills from `.agents/skills/<skill>/SKILL.md` (repo-level,
+    // parent-searched up to the repo root). Dir name == skill name.
+    const codexName = `gruntwork-${name}`
+    const dst = join(repoPath, ".agents", "skills", codexName, "SKILL.md")
+    await writeFileEnsureDir(dst, rewriteNameForCodex(content, codexName))
+    console.log(`  Wrote .agents/skills/${codexName}/SKILL.md`)
   }
 }
 

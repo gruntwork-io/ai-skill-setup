@@ -42,7 +42,7 @@ Get an access token at [app.gruntwork.io/settings/profile#mcp-access-tokens](htt
 ### `--target codex`
 
 - **`.codex/config.toml`** (project) or **`~/.codex/config.toml`** (global) — merges a `[mcp_servers.gruntwork]` entry that bridges the HTTP Gruntwork MCP server through `npx mcp-remote` (auto-fetched at runtime). Existing tables are preserved; invalid TOML is never overwritten. Project-scoped writes also update `.gitignore`.
-- **`.codex/prompts/gruntwork-*.md`** — Codex prompts (`/gruntwork-find`, `/gruntwork-deploy`, `/gruntwork-debug`, `/gruntwork-patcher`, `/gruntwork-terragrunt`).
+- **`.agents/skills/gruntwork-*/SKILL.md`** — Codex [skills](https://developers.openai.com/codex/skills) (`$gruntwork-find`, `$gruntwork-deploy`, `$gruntwork-debug`, `$gruntwork-patcher`, `$gruntwork-terragrunt`). Codex reads skills from `.agents/skills/` in the repo or any parent directory.
 - **`AGENTS.md`** — a detected-stack summary.
 
 ### `--target all`
@@ -72,13 +72,15 @@ Pass `--no-scan` to skip this entirely. Useful when:
 
 | Purpose | Claude | Codex |
 |---------|--------|-------|
-| Discover the right Gruntwork module for an infrastructure requirement | `/gruntwork:find` | `/gruntwork-find` |
-| Scaffold Terragrunt configs for a specific Gruntwork module | `/gruntwork:deploy` | `/gruntwork-deploy` |
-| Audit module versions, apply patches and upgrades | `/gruntwork:patcher` | `/gruntwork-patcher` |
-| Troubleshoot Terragrunt, OpenTofu/Terraform errors | `/gruntwork:debug` | `/gruntwork-debug` |
-| Explain Terragrunt concepts, blocks, functions, repo structure, migrations | `/gruntwork:terragrunt` | `/gruntwork-terragrunt` |
+| Discover the right Gruntwork module for an infrastructure requirement | `/gruntwork:find` | `$gruntwork-find` |
+| Scaffold Terragrunt configs for a specific Gruntwork module | `/gruntwork:deploy` | `$gruntwork-deploy` |
+| Audit module versions, apply patches and upgrades | `/gruntwork:patcher` | `$gruntwork-patcher` |
+| Troubleshoot Terragrunt, OpenTofu/Terraform errors | `/gruntwork:debug` | `$gruntwork-debug` |
+| Explain Terragrunt concepts, blocks, functions, repo structure, migrations | `/gruntwork:terragrunt` | `$gruntwork-terragrunt` |
 
-Each skill is a Markdown file — open any of them in `.claude/skills/gruntwork/` or `.codex/prompts/` to read or customize the prompt.
+Codex skills can also be invoked via `/skills <name>`, and Codex selects them implicitly when the `description:` matches the current task.
+
+Each skill is a Markdown file — open any of them in `.claude/skills/gruntwork/` or `.agents/skills/` to read or customize the prompt.
 
 ## Requirements
 
